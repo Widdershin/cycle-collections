@@ -73,128 +73,71 @@ function Card ({DOM}) {
   };
 }
 
-const listActions = {
-  addCard (state) {
-    return {
-      ...state,
+function Container (name, Component) {
+  function view (state, childVtrees) {
+    return (
+      div('.' + name.toLowerCase(), [
+        button('.add', `Add ${Component.name}`),
 
-      cards: state.cards.add({})
-    };
+        div(`.${Component.name.toLowerCase()}s`, childVtrees)
+      ])
+    );
   }
-};
 
-const cardChildActions = {
-  remove$ (state, removedCard) {
-    return {
-      ...state,
+  const actions = {
+    addChild (state) {
+      return {
+        ...state,
 
-      cards: state.cards.remove(removedCard)
-    };
-  }
-};
-
-function listView (state, cardsVtrees) {
-  return (
-    div('.list', [
-      button('.add-card', 'Add card'),
-
-      button('.remove', 'x'),
-
-      div('.cards', cardsVtrees)
-    ])
-  );
-}
-
-function List ({DOM, props$}) {
-  const cards = Collection(Card, {DOM}, cardChildActions);
-
-  const remove$ = DOM
-    .select('.remove')
-    .events('click');
-
-  const addCard$ = DOM
-    .select('.add-card')
-    .events('click')
-    .mapTo(listActions.addCard);
-
-  const action$ = xs.merge(
-    cards.action$,
-
-    addCard$
-  );
-
-  const initialState = {
-    cards
+        children: state.children.add({})
+      };
+    }
   };
 
-  const state$ = action$.fold((state, action) => action(state), initialState);
+  const childActions = {
+    remove$ (state, removedChild) {
+      return {
+        ...state,
 
-  const cards$ = state$.map(state => state.cards);
-
-  const cardsVtrees$ = Collection.pluck(cards$, 'DOM');
-
-  return {
-    DOM: xs.combine(listView, state$, cardsVtrees$),
-
-    remove$
+        children: state.children.remove(removedChild)
+      };
+    }
   };
-}
 
-const actions = {
-  addList (state) {
+  function container ({DOM}) {
+    const children = Collection(Component, {DOM}, childActions);
+
+    const initialState = {
+      children
+    };
+
+    const addChild$ = DOM
+      .select('.add')
+      .events('click')
+      .mapTo(actions.addChild);
+
+    const action$ = xs.merge(
+      children.action$,
+
+      addChild$
+    );
+
+    const state$ = action$.fold((state, action) => action(state), initialState);
+
+    const children$ = state$.map(state => state.children);
+
+    const childVtrees$ = Collection.pluck(children$, 'DOM');
+
     return {
-      ...state,
-
-      lists: state.lists.add({})
+      DOM: xs.combine(view, state$, childVtrees$)
     };
   }
-};
 
-const listChildActions = {
-  remove$ (state, removedList) {
-    return {
-      ...state,
+  Object.defineProperty(container, 'name', {value: name});
 
-      lists: state.lists.remove(removedList)
-    };
-  }
-};
-
-function view (state, listVtrees) {
-  return (
-    div('.main', [
-      button('.add-list', 'Add list'),
-
-      div('.lists', listVtrees)
-    ])
-  );
+  return container;
 }
 
-export default function main ({DOM}) {
-  const lists = Collection(List, {DOM}, listChildActions);
+const Main = Container('Main', Container('List', Card));
 
-  const initialState = {
-    lists
-  };
-
-  const addList$ = DOM
-    .select('.add-list')
-    .events('click')
-    .mapTo(actions.addList);
-
-  const action$ = xs.merge(
-    lists.action$,
-
-    addList$
-  );
-
-  const state$ = action$.fold((state, action) => action(state), initialState);
-
-  const lists$ = state$.map(state => state.lists);
-
-  const listVtrees$ = Collection.pluck(lists$, 'DOM');
-
-  return {
-    DOM: xs.combine(view, state$, listVtrees$)
-  };
-}
+export default Main;
